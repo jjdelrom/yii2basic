@@ -10,6 +10,7 @@ use app\models\LoginForm;
 use app\models\ContactForm;
 //JJ
 use app\models\EntryForm;
+use app\models\ValidarFormulario;
 
 class SiteController extends Controller
 {
@@ -134,12 +135,58 @@ class SiteController extends Controller
     public function actionByeBye($message = 'Bye Bye') /*Si no se pasa parametro, por defecto muestra Bye Bye*/
     {
         return $this->render('bye-bye', ['message' => $message]);
+        
     }//Hay que tener cuidado como se llama a la pagina, actionByeBye se le llama bye-bye
 //    public function actionHelloWorld()
 //    {
 //        return 'Hello World';
 //    }  
+    public function actionSaluda(){
+        
+        //HAY 2 FORMAS DE PASAR VARIABLES una con  $this->view->params['mensaje']... y otra en el return
+                
+         //se lo pasamos a la vista
+        $this->view->params['mensaje'] = 'Hola Mundo cruel';
+        $this->view->params['numeros'] = [1,2,3,4,5];
+        $this->view->params['get'] = Yii::$app->request->get();
+        
+            
+        $m = "<br>TEXTO MENSAJE 2<br>";
+        
+        return $this->render("saluda",["mensaje2"=> $m]);//saluda es la vista
+        //para acceder: http://localhost:8888/index.php?r=site/saluda
+    }
+    public function actionFormulario($mensaje = NULL){
+        
+        
+        return $this->render("formulario",["mensaje" => $mensaje]);
+    }
     
+    public function actionRequest()
+    {        
+        $mensaje = NULL;
+        if(isset($_REQUEST["nombre"]) && $_REQUEST["nombre"] != "") //o $_GET    Yii::$app->request
+        {
+            $mensaje = "Nombre introducido correctamente: ".$_REQUEST["nombre"];
+        }
+        $this->redirect(["site/formulario","mensaje" => $mensaje]);
+                                            //parametros get, se le pueden añadir mas parametros
+    }
+    public function actionValidarFormulario(){
+        
+        $model = new ValidarFormulario;
+        if($model->load(\Yii::$app->request->post())){
+            if($model->validate()){
+                //Por ejemplo consultar en la base de datos
+            }
+            else {
+                $model->getErrors();
+            }
+        }
+        
+        return $this->render("validarFormulario",["model"=>$model]);
+    }
+
     //JJ
     public function actionEntry()
     {//1 se crea un EntryForm, se intenta completar los datos de $_post previsto en yii\web\Request::post()
