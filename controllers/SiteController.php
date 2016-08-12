@@ -244,6 +244,13 @@ class SiteController extends Controller
         }
         return $this->render("create",['model'=>$model,'msg'=>$msg]);
     }
+    public function actionView(){
+        
+        $table = new Alumnos;
+        $model = $table->find()->all(); //http://www.yiiframework.com/doc-2.0/yii-db-activerecord.html#find%28%29-detail
+        
+        return $this->render("view",['model'=>$model]);
+    }
 
     //JJ
     public function actionEntry()
