@@ -19,6 +19,7 @@ use app\models\FormAlumnos;
 use app\models\Alumnos;
 use app\models\FormSearch;
 use yii\helpers\Html;
+use yii\data\Pagination;
 
 class SiteController extends Controller
 {
@@ -246,11 +247,32 @@ class SiteController extends Controller
         }
         return $this->render("create",['model'=>$model,'msg'=>$msg]);
     }
-      public function actionView()
+//      public function actionView()  //CAMPO DE BUSQUEDA CON CONSULTAS
+//    {
+//        $table = new Alumnos;
+//        $model = $table->find()->all();
+//        
+//        $form = new FormSearch;
+//        $search = null;
+//        if($form->load(Yii::$app->request->get()))
+//        {
+//            if ($form->validate())
+//            {
+//                $search = Html::encode($form->q);
+//                $query = "SELECT * FROM alumnos WHERE id_alumno LIKE '%$search%' OR ";
+//                $query .= "nombre LIKE '%$search%' OR apellidos LIKE '%$search%'";
+//                $model = $table->findBySql($query)->all();
+//            }
+//            else
+//            {
+//                $form->getErrors();
+//            }
+//        }
+//        return $this->render("view", ["model" => $model, "form" => $form, "search" => $search]);
+//    }
+
+    public function actionView()
     {
-        $table = new Alumnos;
-        $model = $table->find()->all();
-        
         $form = new FormSearch;
         $search = null;
         if($form->load(Yii::$app->request->get()))
@@ -258,18 +280,42 @@ class SiteController extends Controller
             if ($form->validate())
             {
                 $search = Html::encode($form->q);
-                $query = "SELECT * FROM alumnos WHERE id_alumno LIKE '%$search%' OR ";
-                $query .= "nombre LIKE '%$search%' OR apellidos LIKE '%$search%'";
-                $model = $table->findBySql($query)->all();
+                $table = Alumnos::find()
+                        ->where(["like", "id_alumno", $search])
+                        ->orWhere(["like", "nombre", $search])
+                        ->orWhere(["like", "apellidos", $search]);
+                $count = clone $table;
+                $pages = new Pagination([
+                    "pageSize" => 1, //elementos por paginas
+                    "totalCount" => $count->count() //elementos de la consulta
+                ]);
+                $model = $table
+                        ->offset($pages->offset)
+                        ->limit($pages->limit)
+                        ->all();
             }
             else
             {
                 $form->getErrors();
             }
         }
-        return $this->render("view", ["model" => $model, "form" => $form, "search" => $search]);
+        else
+        { //en caso contrario se muestran todos los registros
+            $table = Alumnos::find();
+            $count = clone $table;
+            $pages = new Pagination([
+                "pageSize" => 1,
+                "totalCount" => $count->count(),
+            ]);
+            $model = $table
+                    ->offset($pages->offset)
+                    ->limit($pages->limit)
+                    ->all();
+        }
+        return $this->render("view", ["model" => $model, "form" => $form, "search" => $search, "pages" => $pages]);
     }
-
+ //   Clase Pagination: http://www.yiiframework.com/doc-2.0/yii-data-pagination.html
+ //   Clase Query: http://www.yiiframework.com/doc-2.0/yii-db-query.html
     //JJ
     public function actionEntry()
     {//1 se crea un EntryForm, se intenta completar los datos de $_post previsto en yii\web\Request::post()

@@ -2,6 +2,8 @@
 use yii\helpers\Url;
 use yii\helpers\Html;
 use yii\widgets\ActiveForm;
+use yii\data\Pagination;
+use yii\widgets\LinkPager;
 ?>
 
 <a href="<?= Url::toRoute("site/create") ?>">Crear un nuevo alumno</a>
@@ -44,3 +46,5 @@ use yii\widgets\ActiveForm;
     </tr>
     <?php endforeach ?>
 </table>
+
+<?=LinkPager::widget(["pagination" => $pages]);

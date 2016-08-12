@@ -1,7 +1,7 @@
 <?php
 namespace app\models;
 use Yii;
-use yii\base\model;
+use yii\base\Model;
 
 class FormSearch extends model{
     public $q;
