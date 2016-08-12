@@ -38,6 +38,8 @@ $config = [
             ],
         ],
         'db' => require(__DIR__ . '/db.php'),
+       // 'db2' => require(__DIR__ . '/db2.php'), //PARA TRABAJAR CON DOS BASES DE DATOS ME 
+       // LA CREO, CREO EL ARCHIVO DB2 CON LOS DATOS DE CONEXION DE LA NUEVA BASE DE DATOS
         /*
         'urlManager' => [
             'enablePrettyUrl' => true,
