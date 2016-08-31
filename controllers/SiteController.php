@@ -20,6 +20,7 @@ use app\models\Alumnos;
 use app\models\FormSearch;
 use yii\helpers\Html;
 use yii\data\Pagination;
+use yii\helpers\Url;
 
 class SiteController extends Controller
 {
@@ -331,6 +332,35 @@ class SiteController extends Controller
             return $this->render('entry', ['model' => $model]);
         }
     }
+    public function actionDelete()
+    {
+        if(Yii::$app->request->post())
+        {
+            $id_alumno = Html::encode($_POST["id_alumno"]);
+            if((int) $id_alumno)
+            {
+                if(Alumnos::deleteAll("id_alumno=:id_alumno", [":id_alumno" => $id_alumno]))
+                {
+                    echo "Alumno con id $id_alumno eliminado con éxito, redireccionando ...";
+                    echo "<meta http-equiv='refresh' content='3; ".Url::toRoute("site/view")."'>";
+                }
+                else
+                {
+                    echo "Ha ocurrido un error al eliminar el alumno, redireccionando ...";
+                    echo "<meta http-equiv='refresh' content='3; ".Url::toRoute("site/view")."'>"; 
+                }
+            }
+            else
+            {
+                echo "Ha ocurrido un error al eliminar el alumno, redireccionando ...";
+                echo "<meta http-equiv='refresh' content='3; ".Url::toRoute("site/view")."'>";
+            }
+        }
+        else
+        {
+            return $this->redirect(["site/view"]);
+        }
+    }    
 }
 
         
