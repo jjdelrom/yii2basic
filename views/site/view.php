@@ -5,24 +5,26 @@ use yii\widgets\ActiveForm;
 use yii\data\Pagination;
 use yii\widgets\LinkPager;
 ?>
-
+ 
 <a href="<?= Url::toRoute("site/create") ?>">Crear un nuevo alumno</a>
-
-<?php  $f = ActiveForm::begin([
-        "method" => "get",
-        "action" => Url::toRoute("site/view"),
-        "enableClientValidation" => TRUE,
-])
+ 
+<?php $f = ActiveForm::begin([
+    "method" => "get",
+    "action" => Url::toRoute("site/view"),
+    "enableClientValidation" => true,
+]);
 ?>
+ 
 <div class="form-group">
-    <?= $f->field($form, "q")->input("search")  ?>
+    <?= $f->field($form, "q")->input("search") ?>
 </div>
-<?=Html::submitButton("Buscar",["class"=>"btn btn-primary"]); ?>
-
+ 
+<?= Html::submitButton("Buscar", ["class" => "btn btn-primary"]) ?>
+ 
 <?php $f->end() ?>
-
+ 
 <h3><?= $search ?></h3>
-
+ 
 <h3>Lista de alumnos</h3>
 <table class="table table-bordered">
     <tr>
@@ -41,7 +43,7 @@ use yii\widgets\LinkPager;
         <td><?= $row->apellidos ?></td>
         <td><?= $row->clase ?></td>
         <td><?= $row->nota_final ?></td>
-        <td><a href="#">Editar</a></td>
+        <td><a href="<?= Url::toRoute(["site/update", "id_alumno" => $row->id_alumno]) ?>">Editar</a></td>
         <td>
             <a href="#" data-toggle="modal" data-target="#id_alumno_<?= $row->id_alumno ?>">Eliminar</a>
             <div class="modal fade" role="dialog" aria-hidden="true" id="id_alumno_<?= $row->id_alumno ?>">
@@ -69,4 +71,6 @@ use yii\widgets\LinkPager;
     <?php endforeach ?>
 </table>
 
-<?=LinkPager::widget(["pagination" => $pages]);
+<?= LinkPager::widget([
+    "pagination" => $pages,
+]);
