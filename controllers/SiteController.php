@@ -23,13 +23,19 @@ use yii\data\Pagination;
 use yii\helpers\Url;
 use app\models\FormRegister;
 use app\models\Users;
+use yii\web\Session;
+use app\models\FormRecoverPass;
+use app\models\FormResetPass;
+use app\models\User;
+use app\models\FormUpload;
+use yii\web\UploadedFile;
 
 class SiteController extends Controller
 {
     /**
      * @inheritdoc
      */
-    public function behaviors()
+/*    public function behaviors()
     {
         return [
             'access' => [
@@ -50,12 +56,64 @@ class SiteController extends Controller
                 ],
             ],
         ];
-    }
+    }*/
 
-    /**
-     * @inheritdoc
-     */
-    public function actions()
+            public function behaviors()
+        {
+            return [
+                'access' => [
+                    'class' => AccessControl::className(),
+                    'only' => ['logout', 'user', 'admin'],
+                    'rules' => [
+                        [
+                            //El administrador tiene permisos sobre las siguientes acciones
+                            'actions' => ['logout', 'admin'],
+                            //Esta propiedad establece que tiene permisos
+                            'allow' => true,
+                            //Usuarios autenticados, el signo ? es para invitados
+                            'roles' => ['@'],
+                            //Este método nos permite crear un filtro sobre la identidad del usuario
+                            //y así establecer si tiene permisos o no
+                            'matchCallback' => function ($rule, $action) {
+                                //Llamada al método que comprueba si es un administrador
+                                return User::isUserAdmin(Yii::$app->user->identity->id);
+                            },
+                        ],
+                        [
+                           //Los usuarios simples tienen permisos sobre las siguientes acciones
+                           'actions' => ['logout', 'user'],
+                           //Esta propiedad establece que tiene permisos
+                           'allow' => true,
+                           //Usuarios autenticados, el signo ? es para invitados
+                           'roles' => ['@'],
+                           //Este método nos permite crear un filtro sobre la identidad del usuario
+                           //y así establecer si tiene permisos o no
+                           'matchCallback' => function ($rule, $action) {
+                              //Llamada al método que comprueba si es un usuario simple
+                              return User::isUserSimple(Yii::$app->user->identity->id);
+                          },
+                       ],
+                    ],
+                ],
+         //Controla el modo en que se accede a las acciones, en este ejemplo a la acción logout
+         //sólo se puede acceder a través del método post
+                'verbs' => [
+                    'class' => VerbFilter::className(),
+                    'actions' => [
+                        'logout' => ['post'], //solo se puede acceder por post  para acceder con  get tambien se debe añadir ['post','get'],
+                    ],
+                ],
+            ];
+        }
+    
+        public function actionUser(){
+            return $this->render("user");
+        }
+        public function actionAdmin(){
+            return $this->render("admin");
+        }
+
+        public function actions()
     {
         return [
             'error' => [
@@ -67,7 +125,28 @@ class SiteController extends Controller
             ],
         ];
     }
+    public function actionUpload()
+    {
 
+     $model = new FormUpload;
+     $msg = null;
+
+     if ($model->load(Yii::$app->request->post()))
+     {
+      $model->file = UploadedFile::getInstances($model, 'file');
+      //$model->file = UploadedFile::getInstance($model, 'file'); esta linea es solo si se sube un solo archivo en vez de 4
+      //$file = $model->file;
+      //$file = saveAs(......);
+
+      if ($model->file && $model->validate()) {
+       foreach ($model->file as $file) {
+        $file->saveAs('archivos/' . $file->baseName . '.' . $file->extension);
+        $msg = "<p><strong class='label label-info'>Enhorabuena, subida realizada con éxito</strong></p>";
+       }
+      }
+     }
+     return $this->render("upload", ["model" => $model, "msg" => $msg]);
+    }
     /**
      * Displays homepage.
      *
@@ -78,12 +157,102 @@ class SiteController extends Controller
         return $this->render('index');
     }
 
-    /**
-     * Login action.
-     *
-     * @return string
-     */
-    public function actionLogin()
+    private function downloadFile($dir, $file, $extensions=[])
+    {
+     //Si el directorio existe
+     if (is_dir($dir))
+     {
+      //Ruta absoluta del archivo
+      $path = $dir.$file;
+
+      //Si el archivo existe
+      if (is_file($path))
+      {
+       //Obtener información del archivo
+       $file_info = pathinfo($path);
+       //Obtener la extensión del archivo
+       $extension = $file_info["extension"];
+
+       if (is_array($extensions))
+       {
+        //Si el argumento $extensions es un array
+        //Comprobar las extensiones permitidas
+        foreach($extensions as $e)
+        {
+         //Si la extension es correcta
+         if ($e === $extension)
+         {
+          //Procedemos a descargar el archivo
+          // Definir headers
+          $size = filesize($path);
+          header("Content-Type: application/force-download");
+          header("Content-Disposition: attachment; filename=$file");
+          header("Content-Transfer-Encoding: binary");
+          header("Content-Length: " . $size);
+          // Descargar archivo
+          readfile($path);
+          //Correcto
+          return true;
+         }
+        }
+       }
+
+      }
+     }
+     //Ha ocurrido un error al descargar el archivo
+     return false;
+    }
+
+    public function actionDownload()
+    {
+     if (Yii::$app->request->get("file"))
+     {
+      //Si el archivo no se ha podido descargar
+      //downloadFile($dir, $file, $extensions=[])
+      if (!$this->downloadFile("archivos/", Html::encode($_GET["file"]), ["pdf", "txt", "doc", "png"]))
+      {
+       //Mensaje flash para mostrar el error
+       Yii::$app->session->setFlash("errordownload");
+      }
+     }
+
+     return $this->render("download");
+    }
+    
+public function actionLogin()
+ {
+            if (!\Yii::$app->user->isGuest) {
+
+                if (User::isUserAdmin(Yii::$app->user->identity->id))
+                {
+                 return $this->redirect(["site/admin"]);
+                }
+                else
+                {
+                 return $this->redirect(["site/user"]);
+                }
+            }
+
+            $model = new LoginForm();
+            if ($model->load(Yii::$app->request->post()) && $model->login()) {
+
+                if (User::isUserAdmin(Yii::$app->user->identity->id))
+                {
+                 return $this->redirect(["site/admin"]);
+                }
+                else
+                {
+                 return $this->redirect(["site/user"]);
+                }
+                }
+            else {
+                return $this->render('login', [
+                    'model' => $model,
+                ]);
+            }
+ }
+
+ /*   public function actionLogin()
     {
         if (!Yii::$app->user->isGuest) {
             return $this->goHome();
@@ -96,7 +265,7 @@ class SiteController extends Controller
         return $this->render('login', [
             'model' => $model,
         ]);
-    }
+    }*/
 
     /**
      * Logout action.
@@ -568,8 +737,167 @@ class SiteController extends Controller
       }
      }
      return $this->render("register", ["model" => $model, "msg" => $msg]);
-    }    
-}
+    }
+    
+        public function actionRecoverpass()
+        {
+         //Instancia para validar el formulario
+         $model = new FormRecoverPass;
+
+         //Mensaje que será mostrado al usuario en la vista
+         $msg = null;
+
+         if ($model->load(Yii::$app->request->post()))
+         {
+          if ($model->validate())
+          {
+           //Buscar al usuario a través del email
+           $table = Users::find()->where("email=:email", [":email" => $model->email]);
+
+           //Si el usuario existe
+           if ($table->count() == 1)
+           {
+            //Crear variables de sesión para limitar el tiempo de restablecido del password
+            //hasta que el navegador se cierre
+            $session = new Session;
+            $session->open();
+
+            //Esta clave aleatoria se cargará en un campo oculto del formulario de reseteado
+            $session["recover"] = $this->randKey("abcdef0123456789", 200);
+            $recover = $session["recover"];
+
+            //También almacenaremos el id del usuario en una variable de sesión
+            //El id del usuario es requerido para generar la consulta a la tabla users y 
+            //restablecer el password del usuario
+            $table = Users::find()->where("email=:email", [":email" => $model->email])->one();
+            $session["id_recover"] = $table->id;
+
+            //Esta variable contiene un número hexadecimal que será enviado en el correo al usuario 
+            //para que lo introduzca en un campo del formulario de reseteado
+            //Es guardada en el registro correspondiente de la tabla users
+            $verification_code = $this->randKey("abcdef0123456789", 8);
+            //Columna verification_code
+            $table->verification_code = $verification_code;
+            //Guardamos los cambios en la tabla users
+            $table->save();
+
+            //Creamos el mensaje que será enviado a la cuenta de correo del usuario
+            $subject = "Recuperar password";
+            $body = "<p>Copie el siguiente código de verificación para restablecer su password ... ";
+            $body .= "<strong>".$verification_code."</strong></p>";
+            $body .= "<p><a href='http://yii.local/index.php?r=site/resetpass'>Recuperar password</a></p>";
+
+            //Enviamos el correo
+            Yii::$app->mailer->compose()
+            ->setTo($model->email)
+            ->setFrom([Yii::$app->params["adminEmail"] => Yii::$app->params["title"]])
+            ->setSubject($subject)
+            ->setHtmlBody($body)
+            ->send();
+
+            //Vaciar el campo del formulario
+            $model->email = null;
+
+            //Mostrar el mensaje al usuario
+            $msg = "Le hemos enviado un mensaje a su cuenta de correo para que pueda resetear su password";
+           }
+           else //El usuario no existe
+           {
+            $msg = "Ha ocurrido un error";
+           }
+          }
+          else
+          {
+           $model->getErrors();
+          }
+         }
+         return $this->render("recoverpass", ["model" => $model, "msg" => $msg]);
+        }
+
+        public function actionResetpass()
+        {
+         //Instancia para validar el formulario
+         $model = new FormResetPass;
+
+         //Mensaje que será mostrado al usuario
+         $msg = null;
+
+         //Abrimos la sesión
+         $session = new Session;
+         $session->open();
+
+         //Si no existen las variables de sesión requeridas lo expulsamos a la página de inicio
+         if (empty($session["recover"]) || empty($session["id_recover"]))
+         {
+          return $this->redirect(["site/index"]);
+         }
+         else
+         {
+
+          $recover = $session["recover"];
+          //El valor de esta variable de sesión la cargamos en el campo recover del formulario
+          $model->recover = $recover;
+
+          //Esta variable contiene el id del usuario que solicitó restablecer el password
+          //La utilizaremos para realizar la consulta a la tabla users
+          $id_recover = $session["id_recover"];
+
+         }
+
+         //Si el formulario es enviado para resetear el password
+         if ($model->load(Yii::$app->request->post()))
+         {
+          if ($model->validate())
+          {
+           //Si el valor de la variable de sesión recover es correcta
+           if ($recover == $model->recover)
+           {
+            //Preparamos la consulta para resetear el password, requerimos el email, el id 
+            //del usuario que fue guardado en una variable de session y el código de verificación
+            //que fue enviado en el correo al usuario y que fue guardado en el registro
+            $table = Users::findOne(["email" => $model->email, "id" => $id_recover, "verification_code" => $model->verification_code]);
+
+            //Encriptar el password
+            $table->password = crypt($model->password, Yii::$app->params["salt"]);
+
+            //Si la actualización se lleva a cabo correctamente
+            if ($table->save())
+            {
+
+             //Destruir las variables de sesión
+             $session->destroy();
+
+             //Vaciar los campos del formulario
+             $model->email = null;
+             $model->password = null;
+             $model->password_repeat = null;
+             $model->recover = null;
+             $model->verification_code = null;
+
+             $msg = "Enhorabuena, password reseteado correctamente, redireccionando a la página de login ...";
+             $msg .= "<meta http-equiv='refresh' content='5; ".Url::toRoute("site/login")."'>";
+            }
+            else
+            {
+             $msg = "Ha ocurrido un error";
+            }
+
+           }
+           else
+           {
+            $model->getErrors();
+           }
+          }
+         }
+
+         return $this->render("resetpass", ["model" => $model, "msg" => $msg]);
+
+        }    
+
+        
+        
+        
+}//fin de la clase
 
         
       
