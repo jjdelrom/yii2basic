@@ -1,5 +1,5 @@
 <?php
-
+//contectar la tabla que cree con la tabla por defecto
 namespace app\models;
 
 class User extends \yii\base\Object implements \yii\web\IdentityInterface
